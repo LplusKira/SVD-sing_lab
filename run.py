@@ -270,9 +270,6 @@ def main(argv):
     u2predictionsValid = dict((el,[]) for el in uniqUsrsValidList)
     logreg = linear_model.LogisticRegression(C=LAMBDA, max_iter=MAX_TRAIN_NUM) #, verbose=1)
     for attrInd in range(0, len(usr2NonzeroCols[int( uniqUsrsTrainList[0] )])):
-        for u in usr2NonzeroCols:
-            if not (len(usr2NonzeroCols[u]) == 3):
-                print u, usr2NonzeroCols[u]
         trainAttrs = [usr2NonzeroCols[int(usr)][attrInd] for usr in uniqUsrsTrainList]
         validAttrs = [usr2NonzeroCols[int(usr)][attrInd] for usr in uniqUsrsValidList]
         logreg.fit(uTrain, trainAttrs)
