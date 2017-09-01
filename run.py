@@ -1,6 +1,11 @@
-import dataloaders.yelp as qqdataloader                
 from utils import debug
 from config import USR_TOTAL_LABELS_FIELDS, MAX_TRAIN_NUM, LAMBDA, LEARNING_RATE, SVD_K_NUM
+from dataloaders import movielens100k, yelp, movielens1m 
+DIR2DATALOADER = {  # dataloader by subdir in data
+    'ml-100k': movielens100k,
+    'yelp': yelp,
+    'ml-1m': movielens1m,
+}
 
 import random, sys, traceback, scipy
 import numpy as np
@@ -9,8 +14,11 @@ from scipy import sparse
 from scipy.sparse.linalg import svds
 from sklearn import linear_model
 
-np.random.seed( int(sys.argv[3]) ) # Reproducibility
-random.seed( int(sys.argv[3]) )    # Reproducibility
+def trivialLog(level, msgs):
+    print '\n[' + level + '] time == ', strftime("%Y-%m-%d %H:%M:%S", gmtime())
+    for msg in msgs:
+        print '[' + level + ']', msg
+    
 
 def printTruePredicted(u2predictions, usr2NonzeroCols):
     for usrid in u2predictions:
@@ -86,7 +94,7 @@ def getOneError(u2predictions, usr2NonzeroCols):
 # get RL (ranking loss)
 #   it's .. (0,1) pair's examination 
 def getRL(u2predictions, usr2NonzeroCols):
-    colNums = USR_TOTAL_LABELS_FIELDS * (USR_TOTAL_LABELS_FIELDS - len(usr2NonzeroCols.itervalues().next()))
+    combNums = float( USR_TOTAL_LABELS_FIELDS * (USR_TOTAL_LABELS_FIELDS - len(usr2NonzeroCols.itervalues().next())) )
     totalLoss = 0.0
     for usrid in u2predictions:
         y_nonzeroCols = usr2NonzeroCols[usrid]
@@ -111,7 +119,7 @@ def getRL(u2predictions, usr2NonzeroCols):
             for col2 in y_nonzeroCols:
                 if col2Order[col1] < col2Order[col2]:
                     errCnt += 1
-        lossPerUsr = errCnt / colNums 
+        lossPerUsr = errCnt / combNums 
         totalLoss += lossPerUsr
 
     return totalLoss / len(u2predictions)
@@ -142,8 +150,7 @@ def getCoverage(u2predictions, usr2NonzeroCols):
                 break
             
         loss += lowestOneRank / totalFields
-    return loss / len(usr2itemsIndx)
-
+    return loss / len(u2predictions)
 
 # get average precision 
 #   we may assume 0 1 | 1 0 0:   prob pos(1) >= prob pos(0); prob pos(2) >= prob pos(3), prob pos(2) >= prob pos(4),
@@ -177,7 +184,7 @@ def getAvgPrecision(u2predictions, usr2NonzeroCols):
 
         prec += score / colNums
                 
-    return prec / len(usr2itemsIndx)
+    return prec / len(u2predictions)
 
 # get  hamming loss
 #   we may assume 0 1 | 1 0 0:  pred 
@@ -206,39 +213,41 @@ def splitTrainTest(usrs, items, ratings):
     validIndx = [ind for ind in range(0, usrs.shape[0]) if usrs[ind] in validUsrs]
     trainIndx = [ind for ind in range(0, usrs.shape[0]) if ind not in validIndx]
 
-    return ratings[trainIndx], ratings[validIndx], usrs[trainIndx], usrs[validIndx], items[trainIndx], items[validIndx]
+    return ratings[trainIndx], ratings[validIndx], np.unique(usrs[trainIndx]).tolist(), np.unique(usrs[validIndx]).tolist(), items[trainIndx], items[validIndx]
   
 def main(argv):
     if not len(argv) == 3:
         print '[info] usage: python run.py yourtraindata yourlabelData randomSeed(int)'
         return 1
+
+
+    np.random.seed( int(argv[2]) ) # Reproducibility
+    random.seed( int(argv[2]) )    # Reproducibility
+    trivialLog('info', [ '[trainData, LabelData, randomSeed] == ' + reduce(lambda s1, s2: s1+','+s2, argv) ])
+
     
-    ''' load each usr's ratings (train/valid data) ''' 
-    print '\n[info] time == ', strftime("%Y-%m-%d %H:%M:%S", gmtime())
-    print "[info] hi im loading from", argv[0] 
+    ''' split usr to train/test, do svd with train + valid ''' 
     # sample: 
     # each line (from input) id, r1, r2, ...., rn
     #   e.g. 123, 1, 0, 3
-    # ratings = array([[ 1.,  0.,  2.],
+    # records = array([[ 1.,  0.,  2.],
     #                  [ 0.,  2.,  3.]])
     # ref: https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csc_matrix.html
-    records = np.loadtxt(argv[0], dtype=float, delimiter='\t')
+    trivialLog('info', [ sys.argv[0] + ' is loading trainData from' + argv[0] ])
+    records = np.loadtxt(argv[0], dtype=int, delimiter='\t')
     usrs = records[:,0]
     items = records[:,1]
-    ratings = records[:,2]
-    ratingsTrain, ratingsValid, usrsTrain, usrsValid, itemsTrain, itemsValid = splitTrainTest(usrs, items, ratings)
-    uniqUsrsTrainList = np.unique(usrsTrain).tolist()
-    uniqUsrsValidList = np.unique(usrsValid).tolist()
-    train4svd = scipy.sparse.csc_matrix((ratingsTrain, ([uniqUsrsTrainList.index(usr) for usr in usrsTrain], itemsTrain)))
-    valid4svd = scipy.sparse.csc_matrix((ratingsValid, ([uniqUsrsValidList.index(usr) for usr in usrsValid], itemsValid)))
-    print '[info] ratingsTrain, ratingsValid loaded; train4svd, valid4svd loaded'
+    ratings = records[:,2].astype(float)
+    ratingsTrain, ratingsValid, uniqUsrsTrainList, uniqUsrsValidList, itemsTrain, itemsValid = splitTrainTest(usrs, items, ratings)
+    uniqUsrsAll = uniqUsrsTrainList + uniqUsrsValidList
+    all4svd = scipy.sparse.csc_matrix((ratings, ([uniqUsrsAll.index(usr) for usr in usrs], items)))
+    trivialLog('info', [ 'ratingsTrain, ratingsValid loaded; all4svd loaded' ])
     print '[info] usrs in train: ', uniqUsrsTrainList
     print '[info] usrs in valid: ', uniqUsrsValidList
     
     
     ''' acquire (for all usrs) usr2labels & usr2NonzeroCols ''' 
-    print '\n[info] time == ', strftime("%Y-%m-%d %H:%M:%S", gmtime())
-    print "[info] labels are loading from", argv[1] 
+    trivialLog('info', [ 'labels are loading from' + argv[1] ])
     # sample:
     # each line (from input) id,on-hot-encoded labels 
     #   e.g. 123,0,1,1,0,0
@@ -250,17 +259,19 @@ def main(argv):
     #   0: [2, 3],
     #   1: [0, 4],
     # }
-    dataloader = qqdataloader.dataloader()
+    subdir = argv[1].split('/')[1]
+    dataloader = DIR2DATALOADER[subdir].dataloader()
     usr2labels = dataloader.get_labels(argv[1], usrs)        
     usr2NonzeroCols = dataloader.get_nonZeroCols(argv[1])
-    print '[info] usr2labels, usr2NonzeroCols loaded'
+    trivialLog('info', [ 'usr2labels, usr2NonzeroCols loaded' ])
 
 
     ''' svd, i.e. u * s * vt '''
     # ref: https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.svds.html
-    uTrain, sTrain, vtTrain = svds(train4svd, SVD_K_NUM, which = 'LM')
-    uValid, sValid, vtValid = svds(valid4svd, SVD_K_NUM, which = 'LM')
-    print '[info] shapes before svd: train valid', train4svd.shape, valid4svd.shape
+    uAll, sAll, vtAll = svds(all4svd, SVD_K_NUM, which = 'LM')
+    uTrain = uAll[ range(0, len(uniqUsrsTrainList)), :]
+    uValid = uAll[ range(len(uniqUsrsTrainList), len(uniqUsrsAll)), :]
+    print '[info] shapes before svd: train + valid (usrs, items)', all4svd.shape
     print '[info] svd done'
 
 
@@ -268,17 +279,30 @@ def main(argv):
     # ref: http://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html
     u2predictionsTrain = dict((el,[]) for el in uniqUsrsTrainList)
     u2predictionsValid = dict((el,[]) for el in uniqUsrsValidList)
-    logreg = linear_model.LogisticRegression(C=LAMBDA, max_iter=MAX_TRAIN_NUM) #, verbose=1)
-    for attrInd in range(0, len(usr2NonzeroCols[int( uniqUsrsTrainList[0] )])):
-        trainAttrs = [usr2NonzeroCols[int(usr)][attrInd] for usr in uniqUsrsTrainList]
-        validAttrs = [usr2NonzeroCols[int(usr)][attrInd] for usr in uniqUsrsValidList]
+    logreg = linear_model.LogisticRegression(
+        penalty='l2', 
+        dual=False,               #wtf?
+        tol=1e-12,
+        C=LAMBDA, 
+        fit_intercept=True,     #wtf?
+        intercept_scaling=1,    #wtf?
+        class_weight=None,       
+        random_state=None,       #if None, rng same as np.random's 
+        solver='sag',            # For multiclass problems, only 'newton-cg', 'sag', 'saga' and 'lbfgs' handle multinomial loss; 'liblinear' is limited to one-versus-rest schemes.
+        max_iter=MAX_TRAIN_NUM,
+        multi_class='multinomial',#default: 'ovr'
+        verbose=0,
+        warm_start=False,         #wtf?
+        n_jobs=1,                 #usefull only for multi_class: 'ovr'
+    ) #, verbose=1)
+    for attrInd in range(0, len(usr2NonzeroCols.itervalues().next())):
+        trainAttrs = [usr2NonzeroCols[usr][attrInd] for usr in uniqUsrsTrainList]
+        validAttrs = [usr2NonzeroCols[usr][attrInd] for usr in uniqUsrsValidList]
         logreg.fit(uTrain, trainAttrs)
+        #print 'attrInd, iter, params, prob', attrInd, logreg.n_iter_, logreg.get_params(), logreg.predict_proba(uTrain)
 
         predictionsTrain = logreg.predict(uTrain)
         predictionsValid = logreg.predict(uValid)
-        #print '\non attrind: ', attrInd
-        #print 'on train: actual, predict', trainAttrs, logreg.predict(uTrain)
-        #print 'on train: usrs', uniqUsrsTrainList
 
         # append this attr's prediction by usr
         for ind in range(0, uTrain.shape[0]):
@@ -287,39 +311,37 @@ def main(argv):
         for ind in range(0, uValid.shape[0]):
             usrID = uniqUsrsValidList[ind]
             u2predictionsValid[ usrID ].append( predictionsValid[ind] )
+    trivialLog('info', [ 'logistic regression done' ])
 
-    print '\n[info] time == ', strftime("%Y-%m-%d %H:%M:%S", gmtime())
-    print '[info] logistic regression done'
 
     microF1Train = getMicroF1ByCol(u2predictionsTrain, usr2NonzeroCols)
     microF1Valid = getMicroF1ByCol(u2predictionsValid, usr2NonzeroCols)
     oneErrorTrain = getOneError(u2predictionsTrain, usr2NonzeroCols)
     oneErrorValid = getOneError(u2predictionsValid, usr2NonzeroCols)
-    #RLTrain = getRL(u2predictionsTrain, usr2NonzeroCols)
-    #RLValid = getRL(u2predictionsValid, usr2NonzeroCols)
-    #coverageTrain = getCoverage(u2predictionsTrain, usr2NonzeroCols)
-    #coverageValid = getCoverage(u2predictionsValid, usr2NonzeroCols)
-    #avgPrecTrain = getAvgPrecision(u2predictionsTrain, usr2NonzeroCols)
-    #avgPrecValid = getAvgPrecision(u2predictionsValid, usr2NonzeroCols)
+    RLTrain = getRL(u2predictionsTrain, usr2NonzeroCols)
+    RLValid = getRL(u2predictionsValid, usr2NonzeroCols)
+    coverageTrain = getCoverage(u2predictionsTrain, usr2NonzeroCols)
+    coverageValid = getCoverage(u2predictionsValid, usr2NonzeroCols)
+    avgPrecTrain = getAvgPrecision(u2predictionsTrain, usr2NonzeroCols)
+    avgPrecValid = getAvgPrecision(u2predictionsValid, usr2NonzeroCols)
     HLTrain = getHammingLoss(u2predictionsTrain, usr2NonzeroCols)
     HLValid = getHammingLoss(u2predictionsValid, usr2NonzeroCols)
     print '[info] train data microF1 == ', microF1Train
     print '[info] valid data microF1 == ', microF1Valid
     print '[info] train data oneError == ', oneErrorTrain
     print '[info] valid data oneError == ', oneErrorValid
-    #print '[info] train data RL == ', RLTrain
-    #print '[info] valid data RL == ', RLValid
-    #print '[info] train data coverage == ', coverageTrain
-    #print '[info] valid data coverage == ', coverageValid
-    #print '[info] train data avgPrec == ', avgPrecTrain
-    #print '[info] valid data avgPrec == ', avgPrecValid
+    print '[info] train data RL == ', RLTrain
+    print '[info] valid data RL == ', RLValid
+    print '[info] train data coverage == ', coverageTrain
+    print '[info] valid data coverage == ', coverageValid
+    print '[info] train data avgPrec == ', avgPrecTrain
+    print '[info] valid data avgPrec == ', avgPrecValid
     print '[info] train data hammingLoss == ', HLTrain
     print '[info] valid data hammingLoss == ', HLValid
-    print '\n[info] time == ', strftime("%Y-%m-%d %H:%M:%S", gmtime())
+    trivialLog('info', [ 'for traindata, print real vals & predicted vals ... ' ])
 
-    print '[info]: for traindata, print real vals & predicted vals ... '
     printTruePredicted(u2predictionsTrain, usr2NonzeroCols)
-    print '[info]: for validdata, print real vals & predicted vals ... '
+    trivialLog('info', [ 'for validdata, print real vals & predicted vals ... ' ])
     printTruePredicted(u2predictionsValid, usr2NonzeroCols)
 
 if __name__ == '__main__':

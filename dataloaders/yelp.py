@@ -5,50 +5,7 @@ sys.path.insert(0, '../')
 
 class dataloader:
     def __init__(self):
-        self.ageindxLabelsDict = {
-            0: [1,0,0,0],
-            1: [0,1,0,0],
-            2: [0,0,1,0],
-            3: [0,0,0,1],
-        }
-
-        self.genderLabelDict = {
-          'M': [1,0],
-          'F': [0,1],
-        }
-
-        self.occupationLabelsDict = {}
-        for i in range(21):
-            tmp = [0] * 21
-            tmp[i] = 1
-            self.occupationLabelsDict[i+1] = tmp
-
-    def load(self, file_path):
-        usr2itemsIndx = {}
-        itemsList = []
-        f = open(file_path, 'r')
-        for line in f:
-            try:
-                line = line.strip().split('\t')
-                usr = int(line[0])
-                itemNum = int(line[1])
-
-                # init usr, item (if needed)
-                usr2itemsIndx[usr] = usr2itemsIndx[usr] if usr in usr2itemsIndx else []
-                itemIndx = len(itemsList)
-                if itemNum in itemsList:
-                    itemIndx = itemsList.index(itemNum)
-                else:
-                    itemsList.append(itemNum)
-                
-                usr2itemsIndx[usr].append(itemIndx)
-            except:
-                print traceback.format_exc()
-                pass
-        f.close()
-
-        ind2ItemNum = {k: v for v, k in enumerate(itemsList)}
-        return usr2itemsIndx, ind2ItemNum
+        pass
 
     ## get each, in usrs, usr's labels 
     def get_labels(self, usr2labels_file, usrs):
@@ -85,7 +42,4 @@ class dataloader:
                 raise
         fd.close()
         return usr2nonZeroCols
-
-    def gettotalLabelsNum(self):
-        return 2 * 50
 
