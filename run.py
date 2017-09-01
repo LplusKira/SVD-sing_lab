@@ -13,6 +13,7 @@ from time import gmtime, strftime
 from scipy import sparse
 from scipy.sparse.linalg import svds
 from sklearn import linear_model
+from pandas import read_csv # cause we hate np.loadtxt <-- slow
 
 def trivialLog(level, msgs):
     print '\n[' + level + '] time == ', strftime("%Y-%m-%d %H:%M:%S", gmtime())
@@ -210,8 +211,10 @@ def getHammingLoss(u2predictions, usr2NonzeroCols):
 def splitTrainTest(usrs, items, ratings):
     uniqUsrs = np.unique(usrs)
     validUsrs = random.sample(uniqUsrs, int(uniqUsrs.shape[0] * 0.1))
-    validIndx = [ind for ind in range(0, usrs.shape[0]) if usrs[ind] in validUsrs]
-    trainIndx = [ind for ind in range(0, usrs.shape[0]) if ind not in validIndx]
+    validIndx, trainIndx = [], []
+    for ind, usr in enumerate(usrs):
+        whereTo = validIndx if usr in validUsrs else trainIndx
+        whereTo.append(ind)
 
     return ratings[trainIndx], ratings[validIndx], np.unique(usrs[trainIndx]).tolist(), np.unique(usrs[validIndx]).tolist(), items[trainIndx], items[validIndx]
   
@@ -225,8 +228,8 @@ def main(argv):
     random.seed( int(argv[2]) )    # Reproducibility
     trivialLog('info', [ '[trainData, LabelData, randomSeed] == ' + reduce(lambda s1, s2: s1+','+s2, argv) ])
 
-    
-    ''' split usr to train/test, do svd with train + valid ''' 
+
+    ''' load usrs, items, ratings first '''
     # sample: 
     # each line (from input) id, r1, r2, ...., rn
     #   e.g. 123, 1, 0, 3
@@ -234,16 +237,25 @@ def main(argv):
     #                  [ 0.,  2.,  3.]])
     # ref: https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csc_matrix.html
     trivialLog('info', [ sys.argv[0] + ' is loading trainData from' + argv[0] ])
-    records = np.loadtxt(argv[0], dtype=int, delimiter='\t')
+    #records = np.loadtxt(argv[0], dtype=int, delimiter='\t')
+    records = read_csv(argv[0], sep='\t', header=None).as_matrix()
     usrs = records[:,0]
     items = records[:,1]
     ratings = records[:,2].astype(float)
+    trivialLog('info', [ 'usrs, items, ratings loaded' ])
+
+    
+    ''' split usr to train/test ''' 
     ratingsTrain, ratingsValid, uniqUsrsTrainList, uniqUsrsValidList, itemsTrain, itemsValid = splitTrainTest(usrs, items, ratings)
-    uniqUsrsAll = uniqUsrsTrainList + uniqUsrsValidList
-    all4svd = scipy.sparse.csc_matrix((ratings, ([uniqUsrsAll.index(usr) for usr in usrs], items)))
-    trivialLog('info', [ 'ratingsTrain, ratingsValid loaded; all4svd loaded' ])
+    trivialLog('info', [ 'splitting train/test done' ])
     print '[info] usrs in train: ', uniqUsrsTrainList
     print '[info] usrs in valid: ', uniqUsrsValidList
+
+
+    ''' loading to scipy.sparse.csc_matrix ''' 
+    uniqUsrsAll = uniqUsrsTrainList + uniqUsrsValidList
+    all4svd = scipy.sparse.csc_matrix((ratings, ([uniqUsrsAll.index(usr) for usr in usrs], items)))
+    trivialLog('info', [ 'loading to scipy.sparse.csc_matrix done' ])
     
     
     ''' acquire (for all usrs) usr2labels & usr2NonzeroCols ''' 
@@ -283,7 +295,7 @@ def main(argv):
         penalty='l2', 
         dual=False,               #wtf?
         tol=1e-12,
-        C=LAMBDA, 
+        C=1/LAMBDA, 
         fit_intercept=True,     #wtf?
         intercept_scaling=1,    #wtf?
         class_weight=None,       

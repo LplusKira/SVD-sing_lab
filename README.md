@@ -52,3 +52,5 @@
 
 # refs:
 svd usage, ref: https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.svds.html
+numpy loading txt file usage, ref: http://akuederle.com/stop-using-numpy-loadtxt
+pandas: http://pandas.pydata.org/pandas-docs/stable/generated/pandas.read_csv.html
