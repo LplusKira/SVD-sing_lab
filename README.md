@@ -5,15 +5,15 @@
   
   ```
   on yelp:
-  LAMBDA=0.001 USR_TOTAL_LABELS_FIELDS=12 SVD_K_NUM=100 MAX_TRAIN_NUM=100000 nohup python -u run.py data/yelp/yelp.data.filtered.int data/yelp/biz.cates.filtered.int 0 > report/100Fyelp_0 &
+  LAMBDA=0.001 USR_TOTAL_LABELS_FIELDS=12 SVD_K_NUM=100 MAX_TRAIN_NUM=10000000 nohup python -u run.py data/yelp/yelp.data.filtered.int data/yelp/biz.cates.filtered.int 0 > report/100Fyelp_0 &
   # 																	                   ^ i.e. no buffer stdout
   #^ the bigger LAMBDA is, the more regularization in soft-max logistic regression  
 
   on 100k:
-  LAMBDA=0.001 USR_TOTAL_LABELS_FIELDS=27 SVD_K_NUM=100 MAX_TRAIN_NUM=100000 nohup python -u run.py data/ml-100k/u.data.filtered.sorted data/ml-100k/usr.cates.filtered 0 > report/100F100k_0 &
+  LAMBDA=0.001 USR_TOTAL_LABELS_FIELDS=27 SVD_K_NUM=100 MAX_TRAIN_NUM=10000000 nohup python -u run.py data/ml-100k/u.data.filtered.sorted data/ml-100k/usr.cates.filtered 0 > report/100F100k_0 &
 
   on 1M:
-  LAMBDA=0.001 USR_TOTAL_LABELS_FIELDS=30 SVD_K_NUM=100 MAX_TRAIN_NUM=100000 nohup python -u run.py data/ml-1m/filtered.dat data/ml-1m/usr.cates.filtered 0 > report/100F1m_0 &
+  LAMBDA=0.001 USR_TOTAL_LABELS_FIELDS=30 SVD_K_NUM=100 MAX_TRAIN_NUM=10000000 nohup python -u run.py data/ml-1m/filtered.dat data/ml-1m/usr.cates.filtered 0 > report/100F1m_0 &
   ```
 
   ```
@@ -24,14 +24,19 @@
   ```
   cheat sheet in tmux (cause you dont need to nohup + '&' to keep the python ps running in background)
   on 100k:
-  LAMBDA=0.001 USR_TOTAL_LABELS_FIELDS=27 SVD_K_NUM=100 MAX_TRAIN_NUM=100000 python2.7 -u run.py data/ml-100k/u.data.filtered.sorted data/ml-100k/usr.cates.filtered 0 > report/100F100k_0
+  LAMBDA=0.001 USR_TOTAL_LABELS_FIELDS=27 SVD_K_NUM=100 MAX_TRAIN_NUM=10000000 python2.7 -u run.py data/ml-100k/u.data.filtered.sorted data/ml-100k/usr.cates.filtered 0 > report/100F100k_0
 
   on yelp:
-  LAMBDA=0.001 USR_TOTAL_LABELS_FIELDS=12 SVD_K_NUM=10 MAX_TRAIN_NUM=100000 python2.7 -u run.py data/yelp/yelp.data.filtered.int data/yelp/biz.cates.filtered.int 0 > report/100Fyelp_0
+  LAMBDA=0.001 USR_TOTAL_LABELS_FIELDS=12 SVD_K_NUM=10 MAX_TRAIN_NUM=10000000 python2.7 -u run.py data/yelp/yelp.data.filtered.int data/yelp/biz.cates.filtered.int 0 > report/100Fyelp_0
 
   on 1M:
-  LAMBDA=0.001 USR_TOTAL_LABELS_FIELDS=30 SVD_K_NUM=100 MAX_TRAIN_NUM=100000 python2.7 -u run.py data/ml-1m/filtered.dat data/ml-1m/usr.cates.filtered 0
+  LAMBDA=0.001 USR_TOTAL_LABELS_FIELDS=30 SVD_K_NUM=100 MAX_TRAIN_NUM=10000000 python2.7 -u run.py data/ml-1m/filtered.dat data/ml-1m/usr.cates.filtered 0
   ```
+
+# visualize results:
+  modify $dataResources $line in examine.sh
+  sh examine.sh
+  
 
 # data format:
   python -u run.py ratingFile attrFile randSeed

@@ -252,7 +252,7 @@ def main(argv):
     print '[info] usrs in valid: ', uniqUsrsValidList
 
 
-    ''' loading to scipy.sparse.csc_matrix ''' 
+    ''' loading to scipy.sparse.csc_matrix (and this is pretty slow ...) ''' 
     uniqUsrsAll = uniqUsrsTrainList + uniqUsrsValidList
     all4svd = scipy.sparse.csc_matrix((ratings, ([uniqUsrsAll.index(usr) for usr in usrs], items)))
     trivialLog('info', [ 'loading to scipy.sparse.csc_matrix done' ])
