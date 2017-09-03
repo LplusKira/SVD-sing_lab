@@ -12,8 +12,8 @@ import numpy as np
 from time import gmtime, strftime
 from scipy import sparse
 from scipy.sparse.linalg import svds
-#from sklearn import linear_model
-#from pandas import read_csv # cause we hate np.loadtxt <-- slow
+from sklearn import linear_model
+from pandas import read_csv # cause we hate np.loadtxt <-- slow
 
 def trivialLog(level, msgs):
     print '\n[' + level + '] time == ', strftime("%Y-%m-%d %H:%M:%S", gmtime())
@@ -127,34 +127,36 @@ def getRL(u2predictions, usr2NonzeroCols):
         
 # get coverage 
 #   covreage = find the last one's position (ranked by predicted probability)
-#   we may assume 0 1 | 1 0 0:   prob pos(1) >= prob pos(0); prob pos(2) >= prob pos(3), prob pos(2) >= prob pos(4),
-#             pos 0 1   2 3 4 
-#   but have no other knowledge, so 'sort by prob' would just have: 1 1 0 0 0 (i.e. doesnt change its original ordery)
-#                                                                   1 2 0 3 4
-def getCoverage(u2predictions, usr2NonzeroCols):
-    totalFields = 1.0 * USR_TOTAL_LABELS_FIELDS
+#   say true val 0    1   | 1    0    0   
+#   prob         0.1  0.9   0.3  0.2  0.5
+#   pos          0    1     2    3    4
+#   'sort by prob' would render: 0.9 0.5 0.3 0.2 0.1
+#                                1   4   2   3   0
+def getCoverage(usr2NonzeroCols, usr2probs):
+    totalFields = 1.0 * len( next(usr2probs.itervalues()) )
     colNums = len( next(usr2NonzeroCols.itervalues()) )
     loss = 0.0
-    for usrid in u2predictions:
+    for usrid in usr2probs:
         y_nonzeroCols = usr2NonzeroCols[usrid]
-        bestCols = u2predictions[usrid]
+        probs = usr2probs[usrid]
            
-        # rank by prob (start from 0): i.e. lowest prob => bigger rank number
-        lowestOneRank = colNums - 1
-        for cnt in range(0, colNums):
-            ind = colNums - 1 - cnt
-            if bestCols[ind] > y_nonzeroCols[ind]:
-                lowestOneRank = y_nonzeroCols[ind] + cnt + 1
-                break
-            elif bestCols[ind] < y_nonzeroCols[ind]:
-                lowestOneRank = y_nonzeroCols[ind] + cnt
+        # rank by prob (start from 0): i.e. 'lowest prob => bigger rank number'
+        probOneList = []  # list of [prob, isOne] 
+        for ind, prob in enumerate(probs):
+            probOneList.append([prob, True]) if ind in y_nonzeroCols else probOneList.append([prob, False])
+        allRankList = sorted(probOneList, key=lambda tup: -tup[0])
+
+        lowestOneRank = len(allRankList)   # use pos + 1
+        for ind, tup in reversed(list(enumerate(allRankList))):
+            if(tup[1]):
+                lowestOneRank = ind + 1.0  # use pos + 1
                 break
             
         loss += lowestOneRank / totalFields
-    return loss / len(u2predictions)
+    return loss / len(usr2probs)
 
 # get average precision 
-#   say true val 0    1   | 1    0    0:   
+#   say true val 0    1   | 1    0    0   
 #   prob         0.1  0.9   0.3  0.2  0.5
 #   pos          0    1     2    3    4
 #   'sort by prob' would render: 0.9 0.5 0.3 0.2 0.1
@@ -162,7 +164,7 @@ def getCoverage(u2predictions, usr2NonzeroCols):
 def getAvgPrecision(usr2NonzeroCols, usr2probs):
     colNums = len( next(usr2NonzeroCols.itervalues()) )
     prec = 0.0
-    for usrid in usr2NonzeroCols:
+    for usrid in usr2probs:
         y_nonzeroCols = usr2NonzeroCols[usrid]
         probs = usr2probs[usrid]
            
