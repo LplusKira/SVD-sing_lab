@@ -9,3 +9,4 @@ def debug(msg, val):
     if DEBUG > 0:
         print '[info] ' + msg, val
 
+# TODO: put the eval metrics here

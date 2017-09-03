@@ -1,4 +1,3 @@
-from utils import debug
 from config import USR_TOTAL_LABELS_FIELDS, MAX_TRAIN_NUM, LAMBDA, LEARNING_RATE, SVD_K_NUM
 from dataloaders import movielens100k, yelp, movielens1m 
 DIR2DATALOADER = {  # dataloader by subdir in data
@@ -47,7 +46,7 @@ def getClasses(trueCols, predictedCols):
     return classDict
 
 # ref(how to cal microf1): http://rushdishams.blogspot.tw/2011/08/micro-and-macro-average-of-precision.html
-# get micro f1 by age/gender/occupation
+# get micro f1 by each attr (e.g. age, gender, occupation, ... etc)
 def getMicroF1ByCol(u2predictions, usr2NonzeroCols):
     tpList = [0.0] * USR_TOTAL_LABELS_FIELDS
     fpList = [0.0] * USR_TOTAL_LABELS_FIELDS
