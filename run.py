@@ -183,7 +183,7 @@ def getAvgPrecision(usr2NonzeroCols, usr2probs):
                 rank += 1 
         prec += onesPrec / colNums
 
-    return prec / len(usr2NonzeroCols)
+    return prec / len(usr2probs)
 
 # get  hamming loss
 #   we may assume 0 1 | 1 0 0:  pred 
