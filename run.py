@@ -12,8 +12,8 @@ import numpy as np
 from time import gmtime, strftime
 from scipy import sparse
 from scipy.sparse.linalg import svds
-from sklearn import linear_model
-from pandas import read_csv # cause we hate np.loadtxt <-- slow
+#from sklearn import linear_model
+#from pandas import read_csv # cause we hate np.loadtxt <-- slow
 
 def trivialLog(level, msgs):
     print '\n[' + level + '] time == ', strftime("%Y-%m-%d %H:%M:%S", gmtime())
@@ -154,38 +154,35 @@ def getCoverage(u2predictions, usr2NonzeroCols):
     return loss / len(u2predictions)
 
 # get average precision 
-#   we may assume 0 1 | 1 0 0:   prob pos(1) >= prob pos(0); prob pos(2) >= prob pos(3), prob pos(2) >= prob pos(4),
-#             pos 0 1   2 3 4
-#   since we still dont have each field's prob
-#     so 'sort by prob' would just have: 1 1 0 0 0 (i.e. doesnt change its original ordery)
-#                                        1 2 0 3 4
-def getAvgPrecision(u2predictions, usr2NonzeroCols):
+#   say true val 0    1   | 1    0    0:   
+#   prob         0.1  0.9   0.3  0.2  0.5
+#   pos          0    1     2    3    4
+#   'sort by prob' would render: 0.9 0.5 0.3 0.2 0.1
+#                                1   4   2   3   0
+def getAvgPrecision(usr2NonzeroCols, usr2probs):
     colNums = len( next(usr2NonzeroCols.itervalues()) )
     prec = 0.0
-    for usrid in u2predictions:
+    for usrid in usr2NonzeroCols:
         y_nonzeroCols = usr2NonzeroCols[usrid]
-        bestCols = u2predictions[usrid]
+        probs = usr2probs[usrid]
            
         # each 'real one' has a value: (its reverse pos + 1 in 'ones' by prob) / (its reverse pos + 1 in all fields by prob)
         #                              ^^ i.e. higher porb has lowe pos
-        col2AllRank = {}
-        score = 0.0 
-        for cnt in range(0, colNums):
-            ind = colNums - 1 - cnt
-            if y_nonzeroCols[ind] == bestCols[ind]:
-              col2AllRank[ y_nonzeroCols[ind] ] = ind + 1
-            else:
-              col = y_nonzeroCols[ind]
-              col2AllRank[ col ] = col + len(filter(lambda v: v > col, bestCols))  + 1
+        # ^^^ named as: onePrec = rank / allRank
+        probOneList = []  # list of [prob, isOne] 
+        for ind, prob in enumerate(probs):
+            probOneList.append([prob, True]) if ind in y_nonzeroCols else probOneList.append([prob, False])
+        allRankList = sorted(probOneList, key=lambda tup: -tup[0])
 
-        # sort by Allrank lower to bigger 
-        rankedList = sorted(col2AllRank.items(), key=lambda x: x[1])
-        for ind, val in enumerate(rankedList):
-          score += float(ind + 1) / val[1]
+        onesPrec = 0.0 
+        rank = 1
+        for ind, tup in enumerate(allRankList):
+            if tup[1]:
+                onesPrec += float(rank) / (ind + 1)
+                rank += 1 
+        prec += onesPrec / colNums
 
-        prec += score / colNums
-                
-    return prec / len(u2predictions)
+    return prec / len(usr2NonzeroCols)
 
 # get  hamming loss
 #   we may assume 0 1 | 1 0 0:  pred 
@@ -291,6 +288,8 @@ def main(argv):
     # ref: http://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html
     u2predictionsTrain = dict((el,[]) for el in uniqUsrsTrainList)
     u2predictionsValid = dict((el,[]) for el in uniqUsrsValidList)
+    u2probsTrain = dict((el,[]) for el in uniqUsrsTrainList)
+    u2probsValid = dict((el,[]) for el in uniqUsrsValidList)
     logreg = linear_model.LogisticRegression(
         penalty='l2', 
         dual=False,               #wtf?
@@ -315,14 +314,18 @@ def main(argv):
 
         predictionsTrain = logreg.predict(uTrain)
         predictionsValid = logreg.predict(uValid)
+        probsTrain = logreg.predict_proba(uTrain)
+        probsValid = logreg.predict_proba(uValid)
 
         # append this attr's prediction by usr
         for ind in range(0, uTrain.shape[0]):
             usrID = uniqUsrsTrainList[ind]
             u2predictionsTrain[ usrID ].append( predictionsTrain[ind] )
+            u2probsTrain[ usrID ] += probsTrain
         for ind in range(0, uValid.shape[0]):
             usrID = uniqUsrsValidList[ind]
             u2predictionsValid[ usrID ].append( predictionsValid[ind] )
+            u2probsValid[ usrID ] += probsValid
     trivialLog('info', [ 'logistic regression done' ])
 
 
@@ -334,8 +337,8 @@ def main(argv):
     RLValid = getRL(u2predictionsValid, usr2NonzeroCols)
     coverageTrain = getCoverage(u2predictionsTrain, usr2NonzeroCols)
     coverageValid = getCoverage(u2predictionsValid, usr2NonzeroCols)
-    avgPrecTrain = getAvgPrecision(u2predictionsTrain, usr2NonzeroCols)
-    avgPrecValid = getAvgPrecision(u2predictionsValid, usr2NonzeroCols)
+    avgPrecTrain = getAvgPrecision(usr2NonzeroCols, u2probsTrain)
+    avgPrecValid = getAvgPrecision(usr2NonzeroCols, u2probsValid)
     HLTrain = getHammingLoss(u2predictionsTrain, usr2NonzeroCols)
     HLValid = getHammingLoss(u2predictionsValid, usr2NonzeroCols)
     print '[info] train data microF1 == ', microF1Train
