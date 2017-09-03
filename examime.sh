@@ -1,6 +1,6 @@
 #!/bin/bash
 
-dataResource="1m" #100k" #yelp" #
+dataResource="yelp" #1m" #100k" #
 line=15
 
 for f in "100F" "200F" "300F" "400F"

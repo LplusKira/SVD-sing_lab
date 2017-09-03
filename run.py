@@ -21,9 +21,9 @@ def trivialLog(level, msgs):
         print '[' + level + ']', msg
     
 
-def printTruePredicted(u2predictions, usr2NonzeroCols):
+def printTruePredicted(u2predictions, usr2NonzeroCols, u2probs):
     for usrid in u2predictions:
-        print usrid, usr2NonzeroCols[usrid], u2predictions[usrid]
+        print usrid, usr2NonzeroCols[usrid], u2predictions[usrid], u2probs[usrid]
 
 # return {
 #  0: tp list(of cols) 
@@ -323,11 +323,12 @@ def main(argv):
         for ind in range(0, uTrain.shape[0]):
             usrID = uniqUsrsTrainList[ind]
             u2predictionsTrain[ usrID ].append( predictionsTrain[ind] )
-            u2probsTrain[ usrID ] += probsTrain
+            #print probsTrain[ind]
+            u2probsTrain[ usrID ] += probsTrain[ind].tolist()
         for ind in range(0, uValid.shape[0]):
             usrID = uniqUsrsValidList[ind]
             u2predictionsValid[ usrID ].append( predictionsValid[ind] )
-            u2probsValid[ usrID ] += probsValid
+            u2probsValid[ usrID ] += probsValid[ind].tolist()
     trivialLog('info', [ 'logistic regression done' ])
 
 
@@ -337,8 +338,8 @@ def main(argv):
     oneErrorValid = getOneError(u2predictionsValid, usr2NonzeroCols)
     RLTrain = getRL(u2predictionsTrain, usr2NonzeroCols)
     RLValid = getRL(u2predictionsValid, usr2NonzeroCols)
-    coverageTrain = getCoverage(u2predictionsTrain, usr2NonzeroCols)
-    coverageValid = getCoverage(u2predictionsValid, usr2NonzeroCols)
+    coverageTrain = getCoverage(usr2NonzeroCols, u2probsTrain)
+    coverageValid = getCoverage(usr2NonzeroCols, u2probsValid)
     avgPrecTrain = getAvgPrecision(usr2NonzeroCols, u2probsTrain)
     avgPrecValid = getAvgPrecision(usr2NonzeroCols, u2probsValid)
     HLTrain = getHammingLoss(u2predictionsTrain, usr2NonzeroCols)
@@ -355,11 +356,11 @@ def main(argv):
     print '[info] valid data avgPrec == ', avgPrecValid
     print '[info] train data hammingLoss == ', HLTrain
     print '[info] valid data hammingLoss == ', HLValid
-    trivialLog('info', [ 'for traindata, print real vals & predicted vals ... ' ])
+    trivialLog('info', [ 'for traindata, print real vals & predicted vals & predicted probs ... ' ])
 
-    printTruePredicted(u2predictionsTrain, usr2NonzeroCols)
-    trivialLog('info', [ 'for validdata, print real vals & predicted vals ... ' ])
-    printTruePredicted(u2predictionsValid, usr2NonzeroCols)
+    printTruePredicted(u2predictionsTrain, usr2NonzeroCols, u2probsTrain)
+    trivialLog('info', [ 'for validdata, print real vals & predicted vals & predicted probs... ' ])
+    printTruePredicted(u2predictionsValid, usr2NonzeroCols, u2probsValid)
 
 if __name__ == '__main__':
     main(sys.argv[1:])
