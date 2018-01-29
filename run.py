@@ -1,9 +1,10 @@
 from config import USR_TOTAL_LABELS_FIELDS, MAX_TRAIN_NUM, LAMBDA, LEARNING_RATE, SVD_K_NUM
-from dataloaders import movielens100k, yelp, movielens1m 
+from dataloaders import movielens100k, yelp, movielens1m, egoNet 
 DIR2DATALOADER = {  # dataloader by subdir in data
     'ml-100k': movielens100k,
     'yelp': yelp,
     'ml-1m': movielens1m,
+    'ego-net': egoNet,
 }
 
 import random, sys, traceback, scipy
@@ -236,7 +237,7 @@ def main(argv):
     # ref: https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csc_matrix.html
     trivialLog('info', [ sys.argv[0] + ' is loading trainData from' + argv[0] ])
     #records = np.loadtxt(argv[0], dtype=int, delimiter='\t')
-    records = read_csv(argv[0], sep='\t', header=None).as_matrix()
+    records = read_csv(argv[0], sep=' ', header=None).as_matrix()
     usrs = records[:,0]
     items = records[:,1]
     ratings = records[:,2].astype(float)

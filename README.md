@@ -4,6 +4,9 @@
   ```
   
   ```
+  on ego-net:
+  LAMBDA=0.001 USR_TOTAL_LABELS_FIELDS=18 SVD_K_NUM=100 MAX_TRAIN_NUM=10000000 python2.7 -u run.py data/ego-net/107.edges.u2u.app data/ego-net/107.circles.u2f.filtered 1 > report/100Fego-net107_0 &
+
   on yelp:
   LAMBDA=0.001 USR_TOTAL_LABELS_FIELDS=12 SVD_K_NUM=100 MAX_TRAIN_NUM=10000000 nohup python -u run.py data/yelp/yelp.data.filtered.int data/yelp/biz.cates.filtered.int 0 > report/100Fyelp_0 &
   # 																	                   ^ i.e. no buffer stdout
