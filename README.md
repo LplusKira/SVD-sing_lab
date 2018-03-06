@@ -1,69 +1,59 @@
-# how to run:
-  ```
-  pip install -r requirements.txt
-  ```
-  
-  ```
-  on ego-net:
-  LAMBDA=0.001 USR_TOTAL_LABELS_FIELDS=18 SVD_K_NUM=100 MAX_TRAIN_NUM=10000000 python2.7 -u run.py data/ego-net/107.edges.u2u.app data/ego-net/107.circles.u2f.filtered 1 > report/100Fego-net107_0 &
+# Install:
+```
+pip install -r requirements.txt
+cd bin/; bash cmd.sh data; cd -;
+```
 
-  on yelp:
-  LAMBDA=0.001 USR_TOTAL_LABELS_FIELDS=12 SVD_K_NUM=100 MAX_TRAIN_NUM=10000000 nohup python -u run.py data/yelp/yelp.data.filtered.int data/yelp/biz.cates.filtered.int 0 > report/100Fyelp_0 &
-  # 																	                   ^ i.e. no buffer stdout
-  #^ the bigger LAMBDA is, the more regularization in soft-max logistic regression  
+# Run:
+- MovieLens100K, 5-fold cv
+```
+cd SVD_sing/; \
+SVD_K_NUM=100 MAX_TRAIN_NUM=10000 LEARNING_RATE=0.001 LAMBDA=0.001 \
+nohup python -u svd_sing.py 5 2 ml-100k;
+cd -;
+```
 
-  on 100k:
-  LAMBDA=0.001 USR_TOTAL_LABELS_FIELDS=27 SVD_K_NUM=100 MAX_TRAIN_NUM=10000000 nohup python -u run.py data/ml-100k/u.data.filtered.sorted data/ml-100k/usr.cates.filtered 0 > report/100F100k_0 &
+# Examine:
+- Render report & raw stats in .csv
+__cd bin/; bash pre.sh; cd -__ if it's not executed yet
+```
+cd bin/; \
+bash genStats.sh ml-100k|ml-1m|youtube|ego-net348 foldNum; \
+cd -;
+```
 
-  on 1M:
-  LAMBDA=0.001 USR_TOTAL_LABELS_FIELDS=30 SVD_K_NUM=100 MAX_TRAIN_NUM=10000000 nohup python -u run.py data/ml-1m/filtered.dat data/ml-1m/usr.cates.filtered 0 > report/100F1m_0 &
-  ```
+# Structure:
+- For model, please refer to [Your Cart tells You: Inferring Demographic Attributes from Purchase Data](https://github.com/LplusKira/SVD-sing_lab/blob/master/doc/WSDM2016_wang.pdf)'s section 4.1.2
+- For codes' architecture
+```
+  loads data and keeps respective dependencies (by dataloader & pandas api)
+  |
+  V
+  parse rating data to sparse matrix (through scipy api)
+  |
+  V
+  solve SVD (through scipy api)
+  |
+  V
+  by attribute, learn logistic regression (through sklearn api)
+```
 
-  ```
-  ## gnuplot is required
-  run cmd.sh ## e.g. ./cmd.sh train 1err
-  ```
+# In/Out format:
+Follow the format described in [SNE's README.md](https://github.com/LplusKira/SNE_lab/blob/master/README.md)
 
-  ```
-  cheat sheet in tmux (cause you dont need to nohup + '&' to keep the python ps running in background)
-  on 100k:
-  LAMBDA=0.001 USR_TOTAL_LABELS_FIELDS=27 SVD_K_NUM=100 MAX_TRAIN_NUM=10000000 python2.7 -u run.py data/ml-100k/u.data.filtered.sorted data/ml-100k/usr.cates.filtered 0 > report/100F100k_0
+# Ref:
+0. [Dataset](http://files.grouplens.org/datasets/movielens/ml-100k.zip) for ml-100k
+1. [Dataset](http://files.grouplens.org/datasets/movielens/ml-1m.zip) for ml-1m
+2. [Dataset](http://snap.stanford.edu/data/facebook.tar.gz) for ego-net
+3. [Graph Data](http://snap.stanford.edu/data/bigdata/communities/com-youtube.ungraph.txt.gz) and [Community Data](http://snap.stanford.edu/data/bigdata/communities/com-youtube.all.cmty.txt.gz) for youtube
+4. [SVD APIs in scipy](https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.svds.html)
+5. [CSV loading APIs in Pandas](http://pandas.pydata.org/pandas-docs/stable/generated/pandas.read_csv.html)
 
-  on yelp:
-  LAMBDA=0.001 USR_TOTAL_LABELS_FIELDS=12 SVD_K_NUM=10 MAX_TRAIN_NUM=10000000 python2.7 -u run.py data/yelp/yelp.data.filtered.int data/yelp/biz.cates.filtered.int 0 > report/100Fyelp_0
-
-  on 1M:
-  LAMBDA=0.001 USR_TOTAL_LABELS_FIELDS=30 SVD_K_NUM=100 MAX_TRAIN_NUM=10000000 python2.7 -u run.py data/ml-1m/filtered.dat data/ml-1m/usr.cates.filtered 0
-  ```
-
-# visualize results:
-  modify $dataResources $line in examine.sh
-  sh examine.sh
-  
-
-# data format:
-  python -u run.py ratingFile attrFile randSeed
-
-  ratingFile (1st arg after run.py) should be:
-    1       114     5       875072173 
-     ^ i.e. seperated by '\t'
-    ^ usrid ^ itemid^ rating^ doesnt matter ... 
-
-  attrFile (2nd arg after run.py) should be:
-    10,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0
-    ^usrid
-      ^ seperated by comma
-       ^ concatenated one-hot encoded attributes 
-    
-  randSeed
-    an integer (should best be the same as the suffix of redirected file)
-
-# refs:
-svd usage, ref: https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.svds.html
-numpy loading txt file usage, ref: http://akuederle.com/stop-using-numpy-loadtxt
-pandas: http://pandas.pydata.org/pandas-docs/stable/generated/pandas.read_csv.html
+# TODO:
+- 'XXX' in files
 
 # TL;DR:
+- Try this simple one first: Will generate __10Fml-100k__ under report/
 ```
 pip install -r requirements.txt
 cd bin/; bash pre.sh; bash cmd.sh data; cd -;
