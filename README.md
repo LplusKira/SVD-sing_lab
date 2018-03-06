@@ -62,3 +62,14 @@
 svd usage, ref: https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.svds.html
 numpy loading txt file usage, ref: http://akuederle.com/stop-using-numpy-loadtxt
 pandas: http://pandas.pydata.org/pandas-docs/stable/generated/pandas.read_csv.html
+
+# TL;DR:
+```
+pip install -r requirements.txt
+cd bin/; bash pre.sh; bash cmd.sh data; cd -;
+cd SVD_sing/; \
+SVD_K_NUM=10 MAX_TRAIN_NUM=10 \
+LEARNING_RATE=0.001 LAMBDA=0.001 \
+python svd_sing.py 0 2 ml-100k;
+cd -;
+```
