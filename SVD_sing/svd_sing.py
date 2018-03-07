@@ -12,7 +12,8 @@ from dataloaders.EgoNetwork import ENLoader
 from dataloaders.Youtube import YTLoader
 from dataloaders.MovieLens100K import ML100KLoader
 from dataloaders.MovieLens1M import ML1MLoader
-from SNE_lab.utils import getMicroF1ByCol, getOneError, getRL, getCoverage, getAvgPrecision, getHammingLoss
+from SNE_lab.utils import getMicroF1ByCol, getOneError, getHammingLoss
+from utils import getRL, getCoverage, getAvgPrecision  # RL, Coverage, AvgPrecision are prob-based
 from SNE_lab.statevalidators.ENValidator import ENValidator
 from SNE_lab.statevalidators.YTValidator import YTValidator
 from SNE_lab.statevalidators.ML1MValidator import ML1MValidator
@@ -197,6 +198,7 @@ def main(argv):
                 'u2predictions': d['u2predictions'],
                 'totalLabelsNum': dataloader.gettotalLabelsNum(),
                 'rlPairsCnt': dataloader.getRLPairsCnt(),
+                'u2probs': d['u2probs'],
             }
             d['KPIs'] = {kpi: getter(KPIArgs) for kpi, getter in KPI2getters.iteritems()}
             # OR (no write): statevalidator.logStats(d)

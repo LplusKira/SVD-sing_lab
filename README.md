@@ -73,8 +73,10 @@ Follow the format described in [SNE's README.md](https://github.com/LplusKira/SN
 4. [SVD APIs in scipy](https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.svds.html)
 5. [CSV loading APIs in Pandas](http://pandas.pydata.org/pandas-docs/stable/generated/pandas.read_csv.html)
 
+# Moral:
+- __Architecture Design__: split out a module/package whenever multiple modules depends on that with different handling proceedure; e.g. variant evaluations, under different models, on the 'same' metric
+
 # TODO:
-- Check evaluation matrix -- svd_sing has probs!
 - NO need to solve SVD by folds!
 - Handle sklearn/linear_model/sag.py:326: ConvergenceWarning: The max_iter was reached which means the coef_ did not converg  "the coef_ did not converge", ConvergenceWarning)
 - 'XXX' in files

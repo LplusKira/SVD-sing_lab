@@ -1,4 +1,5 @@
 from scipy.sparse import csc_matrix  # For containing parse matrix
+from itertools import product
 
 
 def splitKfolds(usrsNum, k, shuffle):
@@ -102,6 +103,135 @@ def handlePrediction(dataStats, uTrain, uValid, logreg):
             usr = d['usrs'][ind]
             d['u2predictions'][usr].append(predictions[ind])
             d['u2probs'][usr] += probs[ind].tolist()
+
+
+def getSortedPos(vals, reverse=False):
+    '''Get sorted positions
+    >>> vals = [-1, 8, 1, 0.3]
+    >>> print str(getSortedPos(vals, reverse=True)).replace(' ', '')
+    [1,2,3,0]
+    '''
+    posVals = [(ind, prob) for ind, prob in enumerate(vals)]
+    posVals.sort(key=lambda tup: tup[1], reverse=reverse)
+    return [tup[0] for tup in posVals]
+
+
+def getRL(args):
+    '''Get Ranking Loss ~ O(usrs * attributes ** 2)
+    >>> args = {
+    ... 'u2probs': {
+    ...     'usr1': [0.1, 0.9, 0.2, 0.7, 0.1],
+    ...     'usr2': [0.7, 0.3, 0.5, 0.2, 0.1]
+    ...  },
+    ... 'usr2NonzeroCols': {
+    ... 'usr1': [0, 3],
+    ... 'usr2': [1, 2],
+    ... },
+    ... 'totalLabelsNum': 5,
+    ... 'rlPairsCnt': 6,
+    ... }
+    >>> print round(getRL(args), 3)
+    0.417
+    '''
+    u2probs = args['u2probs']
+    usr2NonzeroCols = args['usr2NonzeroCols']
+    totalLabelsNum = args['totalLabelsNum']
+    totalLabels = range(totalLabelsNum)
+    rlPairsCnt = args['rlPairsCnt']
+
+    errors = 0.0
+    for usr in u2probs:
+        onesAct = usr2NonzeroCols[usr]
+        zerosAct = list(set(totalLabels[:]) - set(onesAct))
+        allCombs = list(product(onesAct, zerosAct))
+        probs = u2probs[usr]
+        errorCnt = 0
+
+        # Count err by each comb's prob order
+        for comb in allCombs:
+            onePos, zeroPos = comb[0], comb[1]
+            errorCnt += 1 if probs[onePos] < probs[zeroPos] else 0
+
+        # Add to error
+        errors += errorCnt / float(rlPairsCnt)
+
+    return errors / len(u2probs)
+
+
+def getCoverage(args):
+    '''Get Coverage Loss, O(usrs * mlogm), m = attributes
+    >>> args = {
+    ... 'u2probs': {
+    ...     'usr1': [0.1, 0.9, 0.2, 0.7, 0.1],
+    ...     'usr2': [0.7, 0.3, 0.5, 0.2, 0.1]
+    ...  },
+    ... 'usr2NonzeroCols': {
+    ... 'usr1': [0, 3],
+    ... 'usr2': [1, 2],
+    ... },
+    ... 'totalLabelsNum': 5,
+    ... }
+    >>> print round(getCoverage(args), 3)
+    0.7
+    '''
+    u2probs = args['u2probs']
+    usr2NonzeroCols = args['usr2NonzeroCols']
+    totalLabelsNum = args['totalLabelsNum']
+
+    errors = 0.0
+    for usr in u2probs:
+        probs = u2probs[usr]
+        posSorted = getSortedPos(probs, reverse=True)  # Get sorted position by val (by probs)
+        onesAct = usr2NonzeroCols[usr]
+
+        # Collect this usr error by the last one's pos by stable-sort in probs
+        error = (max([posSorted.index(pos) for pos in onesAct]) + 1) / float(totalLabelsNum)
+
+        errors += error
+
+    return errors / len(u2probs)
+
+
+def getAvgPrecision(args):
+    '''Get Avg Precision, O(usrs * mlogm), m = attributes
+    >>> args = {
+    ... 'u2probs': {
+    ...     'usr1': [0.1, 0.9, 0.2, 0.7, 0.1],
+    ...     'usr2': [0.7, 0.3, 0.5, 0.2, 0.1]
+    ...  },
+    ... 'usr2NonzeroCols': {
+    ... 'usr1': [0, 3],
+    ... 'usr2': [1, 2],
+    ... },
+    ... 'totalLabelsNum': 5,
+    ... }
+    >>> print round(getAvgPrecision(args), 3)
+    0.542
+    '''
+    def getRanks(vals):
+        # Rank from 1 to len(vals) for vals
+        posVals = [(ind, val) for ind, val in enumerate(vals)]
+        posVals.sort(key=lambda tup: tup[1])
+        rankPos = [(ind + 1, tup[0]) for ind, tup in enumerate(posVals)]  # Rank starts from 1
+        rankPos.sort(key=lambda tup: tup[1])
+        return [tup[0] for tup in rankPos]
+
+    u2probs = args['u2probs']
+    usr2NonzeroCols = args['usr2NonzeroCols']
+
+    errors = 0.0
+    for usr in u2probs:
+        onesAct = usr2NonzeroCols[usr]
+        probs = u2probs[usr]
+        posSorted = getSortedPos(probs, reverse=True)  # Get sorted position by val (by probs)
+
+        # Get two ranks for each 'one'
+        totalRanks4Ones = [posSorted.index(one) + 1 for one in onesAct]  # Rank starts from one
+        onesRanks4Ones = getRanks(totalRanks4Ones)
+
+        errors += sum([tup[0] / float(tup[1]) for tup in zip(onesRanks4Ones, totalRanks4Ones)]) / len(onesAct)
+
+    return errors / len(u2probs)
 
 
 if __name__ == '__main__':

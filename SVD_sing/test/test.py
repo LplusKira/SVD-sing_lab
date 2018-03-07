@@ -56,18 +56,18 @@ class TestSVD_SING(unittest.TestCase):
 
             # Compare rawFile with expectations by prior rows
             expectedLines = [
-                'ml-100k,10,0,0,4,inf,train,avgPrec,0.649345690819',
-                'ml-100k,10,0,0,4,inf,train,microF1,0.581033262562',
-                'ml-100k,10,0,0,4,inf,train,coverage,0.465990406542',
-                'ml-100k,10,0,0,4,inf,train,hammingLoss,0.418966737438',
-                'ml-100k,10,0,0,4,inf,train,RL,0.175188723756',
-                'ml-100k,10,0,0,4,inf,train,oneError,0.0552016985138',
-                'ml-100k,10,0,0,4,inf,valid,avgPrec,0.632048759239',
-                'ml-100k,10,0,0,4,inf,valid,microF1,0.564265536723',
-                'ml-100k,10,0,0,4,inf,valid,coverage,0.489092906466',
-                'ml-100k,10,0,0,4,inf,valid,hammingLoss,0.435734463277',
-                'ml-100k,10,0,0,4,inf,valid,RL,0.185587335217',
-                'ml-100k,10,0,0,4,inf,valid,oneError,0.0677966101695',
+                'ml-100k,10,0,0,5,inf,train,avgPrec,0.7088526358',
+                'ml-100k,10,0,0,5,inf,train,microF1,0.581033262562',
+                'ml-100k,10,0,0,5,inf,train,coverage,0.328693874341',
+                'ml-100k,10,0,0,5,inf,train,hammingLoss,0.418966737438',
+                'ml-100k,10,0,0,5,inf,train,RL,0.0978414720453',
+                'ml-100k,10,0,0,5,inf,train,oneError,0.0552016985138',
+                'ml-100k,10,0,0,5,inf,valid,avgPrec,0.68270905135',
+                'ml-100k,10,0,0,5,inf,valid,microF1,0.564265536723',
+                'ml-100k,10,0,0,5,inf,valid,coverage,0.393832391714',
+                'ml-100k,10,0,0,5,inf,valid,hammingLoss,0.435734463277',
+                'ml-100k,10,0,0,5,inf,valid,RL,0.124352636535',
+                'ml-100k,10,0,0,5,inf,valid,oneError,0.0677966101695',
             ]
             for ind, line in enumerate(lines):
                 splitsExp = expectedLines[ind].split(',')
