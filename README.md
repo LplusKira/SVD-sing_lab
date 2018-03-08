@@ -8,7 +8,7 @@ cd bin/; bash pre.sh; bash cmd.sh data; cd -;
 - MovieLens100K, 5-fold cv
 ```
 cd SVD_sing/; \
-SVD_K_NUM=100 MAX_TRAIN_NUM=10000 LEARNING_RATE=0.001 LAMBDA=0.001 \
+SVD_K_NUM=100 MAX_TRAIN_NUM=10000 LAMBDA=0.001 \
 nohup python -u svd_sing.py 0 5 ml-100k; \
 cd -;
 ```
@@ -16,7 +16,7 @@ cd -;
 - MovieLens1M, 5-fold cv
 ```
 cd SVD_sing/; \
-SVD_K_NUM=100 MAX_TRAIN_NUM=8000 LEARNING_RATE=0.001 LAMBDA=0.001 \
+SVD_K_NUM=100 MAX_TRAIN_NUM=8000 LAMBDA=0.001 \
 nohup python -u svd_sing.py 0 5 ml-1m; \
 cd -;
 ```
@@ -24,7 +24,7 @@ cd -;
 - Youtube, 5-fold cv
 ```
 cd SVD_sing/; \
-SVD_K_NUM=100 MAX_TRAIN_NUM=2000 LEARNING_RATE=0.001 LAMBDA=0.001 \
+SVD_K_NUM=100 MAX_TRAIN_NUM=2000 LAMBDA=0.001 \
 nohup python -u svd_sing.py 0 5 youtube; \
 cd -;
 ```
@@ -32,7 +32,7 @@ cd -;
 - Ego-net (Facebook)'s network#348, 5-fold cv
 ```
 cd SVD_sing/; \
-SVD_K_NUM=100 MAX_TRAIN_NUM=1000 LEARNING_RATE=0.001 LAMBDA=0.001 \
+SVD_K_NUM=100 MAX_TRAIN_NUM=1000 LAMBDA=0.001 \
 nohup python -u svd_sing.py 0 5 ego-net rating_file="../data/ego-net/348.edges.u2u" usr2labels_file="../data/ego-net/348.circles.u2f.filtered" sub=348; \
 cd -;
 ```
@@ -78,8 +78,6 @@ Follow the format described in [SNE's README.md](https://github.com/LplusKira/SN
 
 # TODO:
 - NO need to solve SVD by folds!
-- Handle sklearn/linear_model/sag.py:326: ConvergenceWarning: The max_iter was reached which means the coef_ did not converg  "the coef_ did not converge", ConvergenceWarning)
-- 'XXX' in files
 
 # TL;DR:
 - Try this simple one first: Will generate __10Fml-100k__ under report/
@@ -87,8 +85,7 @@ Follow the format described in [SNE's README.md](https://github.com/LplusKira/SN
 pip install -r requirements.txt
 cd bin/; bash pre.sh; bash cmd.sh data; cd -;
 cd SVD_sing/; \
-SVD_K_NUM=10 MAX_TRAIN_NUM=10 \
-LEARNING_RATE=0.001 LAMBDA=0.001 \
+SVD_K_NUM=10 MAX_TRAIN_NUM=10 LAMBDA=0.001 \
 python svd_sing.py 0 2 ml-100k;
 cd -;
 ```

@@ -6,7 +6,7 @@ from numpy import unique
 from scipy.sparse.linalg import svds  # For sparse matrix SVD
 from sklearn import linear_model  # For Logistic Reg
 
-from config import LOG_LEVEL, TEST_SVD_SING
+from config import LOG_LEVEL, TEST_SVD_SING, THRESH
 from utils import splitKfolds, getTrainValid, loadToCSCMatrix, getDataStats, handlePrediction
 from dataloaders.EgoNetwork import ENLoader
 from dataloaders.Youtube import YTLoader
@@ -72,6 +72,23 @@ def parseArgs(argv, **kwargs):
     return foldNum, dataset, subtitle, rating_file, usr2labels_file
 
 
+def initLogReg(regularization=0.001, maxIterNum=100):
+    '''Init logistic regression module
+    - multi_class='multinomial': use 'multinomial' scheme rather than 'OvR' (one versus rest)
+    - solver='sag': since 'sag' and 'saga' are faster for large dataset
+    Ref: https://jermwatt.github.io/mlrefined/blog_posts/Linear_Supervised_Learning/Part_5_One_versus_all.html#One-versus-All--multi-class-classification
+    '''
+    return linear_model.LogisticRegression(
+        penalty='l2',
+        tol=THRESH,  # Termination threshhold
+        C=1 / regularization,  # C is the inverse of regularization strength
+        random_state=None,  # 'None': use rng of np.random
+        max_iter=maxIterNum,
+        solver='sag',  # Default: 'liblinear' (limited to one-versus-rest schemes).
+        multi_class='multinomial',  # Default: 'ovr'
+    )
+
+
 def main(argv):
     foldNum, dataset, subtitle, rating_file, usr2labels_file = parseArgs(
         argv[:4],
@@ -89,7 +106,6 @@ def main(argv):
     '''
     SVD_K_NUM, \
         MAX_TRAIN_NUM, \
-        LEARNING_RATE, \
         LAMBDA = dataloader.getTrainingConf()
 
     '''Load usrs, items, ratings
@@ -127,20 +143,36 @@ def main(argv):
         )
 
         '''Load to scipy.sparse.csc_matrix (slow!)
+        Ref: https://docs.scipy.org/doc/scipy/reference/sparse.html#module-scipy.sparse
+        Why csc (OR csr): To perform manipulations such as multiplication or inversion,
+        first convert the matrix to either CSC or CSR format.
         '''
         usrsShuffled = usrs4Train + usrs4Valid
         all4svd = loadToCSCMatrix(
-            ratings=ratings,
-            ratingUsrs=usrs,
-            uniqShuffledUsrs=usrsShuffled,
-            items=items,
+            ratings=ratings,  # Sparse matrix entries
+            ratingUsrs=usrs,  # Each entry's corresponding usr
+            uniqShuffledUsrs=usrsShuffled,  # List of usr (to index usr's corresponding row)
+            items=items,  # Each entry's corresponding col
         )
         logging.info('csc_matrix loaded')
 
         '''SVD -- decompose to u * s * vt
+        - which='LM': use largest singular values
         ref: https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.linalg.svds.html
         '''
-        uAll, sAll, vtAll = svds(all4svd, SVD_K_NUM, which='LM')
+        try:
+            uAll, sAll, vtAll = svds(all4svd, k=SVD_K_NUM, which='LM')
+        except ValueError:
+            logging.error('SVD_K_NUM > min(all4svd.shape), where all4svd.shape == {}'.format(str(all4svd.shape)))
+            logging.error(('That means the rating file ({rating_file}) has {M}' +
+                           ' usrs and {N} items involved, and its not possible' +
+                           ' to do svd under {M} X {N} with {K} singular vals (SVD_K_NUM)').format(
+                               rating_file=rating_file,
+                               M=all4svd.shape[0],
+                               N=all4svd.shape[1],
+                               K=SVD_K_NUM,)
+                          )
+            raise
         trainUsrsCnt = len(usrs4Train)
         uTrain = uAll[:trainUsrsCnt, :]
         uValid = uAll[trainUsrsCnt:, :]
@@ -150,31 +182,22 @@ def main(argv):
         logging.info('V\' dimensions = {}'.format(str(vtAll.shape)))
         logging.info('svd done')
 
-        '''Init dataStats & logistic regression module
+        '''Init dataStats
         '''
         dataStats = getDataStats(usrs4Train, usrs4Valid)
-        logreg = linear_model.LogisticRegression(
-            penalty='l2',
-            dual=False,  # XXX
-            tol=1e-12,
-            C=1 / LAMBDA,
-            fit_intercept=True,  # XXX
-            intercept_scaling=1,  # XXX
-            class_weight=None,
-            random_state=None,  # None, rng same as np.random's
-            solver='sag',  # For multiclass problems, only 'newton-cg', 'sag', 'saga' and 'lbfgs' handle multinomial loss; 'liblinear' is limited to one-versus-rest schemes.
-            max_iter=MAX_TRAIN_NUM,
-            multi_class='multinomial',  # Default: 'ovr'
-            verbose=0,
-            warm_start=False,  # wtf?
-            n_jobs=1,  # Usefull only for multi_class: 'ovr'
-        )
 
         '''Learning logistic regression's W by each attribute
+        - uTrain, uValid both ndarry generated from svd
         ref: http://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html
         '''
         attrsCnt = dataloader.getLabelsCnt()
         for ind in range(attrsCnt):
+            # Init logisticReg
+            logreg = initLogReg(
+                regularization=LAMBDA,
+                maxIterNum=MAX_TRAIN_NUM
+            )
+
             # Train
             attrs = [usr2NonzeroCols[usr][ind] for usr in usrs4Train]
             logreg.fit(uTrain, attrs)

@@ -32,5 +32,4 @@ class ENLoader(ENLoader):
     def getTrainingConf(self):
         return self.SVD_K_NUM, \
             self.MAX_TRAIN_NUM, \
-            self.LEARNING_RATE, \
             self.LAMBDA

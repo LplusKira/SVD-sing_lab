@@ -1,6 +1,9 @@
 import logging
 from os import environ
 
+# For learning
+THRESH = float(environ.get('THRESH', 1e-12))
+
 # For logging
 DEBUG2LOG_LEVEL = {
     'DEBUG': logging.DEBUG,

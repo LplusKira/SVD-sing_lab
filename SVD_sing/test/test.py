@@ -40,10 +40,10 @@ class TestSVD_SING(unittest.TestCase):
             execStr = ' '.join(['DEBUG=WARNING TEST_SVD_SING=1',
                                 'SVD_K_NUM=' + testFieldsNum,
                                 'MAX_TRAIN_NUM=' + testTrainNum,
-                                'LEARNING_RATE=0.001 LAMBDA=0.001 python2.7 svd_sing.py 0',
+                                'LAMBDA=0.001 python2.7 svd_sing.py 0',
                                 testFoldNum,
                                 testDataSet])
-            expectedExecStr = 'DEBUG=WARNING TEST_SVD_SING=1 SVD_K_NUM=10 MAX_TRAIN_NUM=10 LEARNING_RATE=0.001 LAMBDA=0.001 python2.7 svd_sing.py 0 2 ml-100k'
+            expectedExecStr = 'DEBUG=WARNING TEST_SVD_SING=1 SVD_K_NUM=10 MAX_TRAIN_NUM=10 LAMBDA=0.001 python2.7 svd_sing.py 0 2 ml-100k'
             self.assertEqual(execStr, expectedExecStr)
             os.system('cd ../ && ' + execStr)
 

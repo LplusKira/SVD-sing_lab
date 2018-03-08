@@ -45,7 +45,7 @@ def getTrainValid(kfolds, foldNum, usrs, items, ratings):
 
 
 def loadToCSCMatrix(ratings, ratingUsrs, uniqShuffledUsrs, items):
-    '''Load ratings to scipy's sparse matrix
+    '''Load ratings to scipy's sparse matrix with unrevealed entries filled with zeros
     loaded matrix should be len(uniqUsrs) X len(items) and sparse
     >>> import numpy as np
     >>> ratings = np.array([1.0, 2.0, 2.0, 4.0])
